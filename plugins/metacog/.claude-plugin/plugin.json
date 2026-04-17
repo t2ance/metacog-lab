@@ -1,0 +1,23 @@
+{
+  "name": "metacog",
+  "version": "0.1.0",
+  "description": "Metacognitive FOK/JOL loop MCP with periodic open-session reminder.",
+  "mcpServers": {
+    "metacog": {
+      "command": "python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/metacog/server.py"]
+    }
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/reminder/entry.py"
+          }
+        ]
+      }
+    ]
+  }
+}
