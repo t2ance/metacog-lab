@@ -77,23 +77,23 @@ File responsibility one-liners:
 ## Task 0: Repo Skeleton
 
 **Files:**
-- Create: `/data1/peijia/projects/metacog-lab/README.md`
-- Create: `/data1/peijia/projects/metacog-lab/.gitignore`
-- Create: `/data1/peijia/projects/metacog-lab/.claude-plugin/marketplace.json`
-- Create: `/data1/peijia/projects/metacog-lab/plugins/metacog/pyproject.toml`
-- Create: `/data1/peijia/projects/metacog-lab/plugins/metacog/README.md`
-- Create: `/data1/peijia/projects/metacog-lab/plugins/metacog/metacog/__init__.py` (empty)
-- Create: `/data1/peijia/projects/metacog-lab/plugins/metacog/reminder/__init__.py` (empty)
-- Create: `/data1/peijia/projects/metacog-lab/plugins/metacog/tests/__init__.py` (empty)
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/README.md`
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/.gitignore`
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/.claude-plugin/marketplace.json`
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/pyproject.toml`
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/README.md`
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/metacog/__init__.py` (empty)
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/reminder/__init__.py` (empty)
+- Create: `/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/tests/__init__.py` (empty)
 
 - [ ] **Step 1: Create directory tree**
 
 ```bash
-mkdir -p /data1/peijia/projects/metacog-lab/.claude-plugin
-mkdir -p /data1/peijia/projects/metacog-lab/plugins/metacog/.claude-plugin
-mkdir -p /data1/peijia/projects/metacog-lab/plugins/metacog/metacog
-mkdir -p /data1/peijia/projects/metacog-lab/plugins/metacog/reminder
-mkdir -p /data1/peijia/projects/metacog-lab/plugins/metacog/tests
+mkdir -p /data1/peijia/projects/claude-code-main/metacog-lab/.claude-plugin
+mkdir -p /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/.claude-plugin
+mkdir -p /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/metacog
+mkdir -p /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/reminder
+mkdir -p /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/tests
 ```
 
 - [ ] **Step 2: Write top-level `.gitignore`**
@@ -192,15 +192,15 @@ A `UserPromptSubmit` hook fires each user turn. If no metacog tool has been call
 - [ ] **Step 7: Touch empty `__init__.py` files**
 
 ```bash
-touch /data1/peijia/projects/metacog-lab/plugins/metacog/metacog/__init__.py
-touch /data1/peijia/projects/metacog-lab/plugins/metacog/reminder/__init__.py
-touch /data1/peijia/projects/metacog-lab/plugins/metacog/tests/__init__.py
+touch /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/metacog/__init__.py
+touch /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/reminder/__init__.py
+touch /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/tests/__init__.py
 ```
 
 - [ ] **Step 8: Commit**
 
 ```bash
-cd /data1/peijia/projects/metacog-lab
+cd /data1/peijia/projects/claude-code-main/metacog-lab
 git init
 git add -A
 git commit -m "chore: bootstrap metacog-lab marketplace skeleton"
@@ -298,7 +298,7 @@ def test_close_with_empty_reason_defaults():
 - [ ] **Step 2: Run tests, confirm all fail**
 
 ```bash
-cd /data1/peijia/projects/metacog-lab/plugins/metacog
+cd /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog
 pytest tests/test_state.py -v
 ```
 
@@ -908,7 +908,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: Import-check the module**
 
 ```bash
-cd /data1/peijia/projects/metacog-lab/plugins/metacog
+cd /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog
 python3 -c "from metacog import server; print('ok', [t for t in dir(server) if not t.startswith('_')])"
 ```
 
@@ -1248,7 +1248,7 @@ if __name__ == "__main__":
 - [ ] **Step 2: Verify import**
 
 ```bash
-cd /data1/peijia/projects/metacog-lab/plugins/metacog
+cd /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog
 python3 -c "from reminder import entry; print('ok')"
 ```
 
@@ -1304,7 +1304,7 @@ git commit -m "feat(reminder): stdin/stdout hook entry with 10/10 threshold gati
 - [ ] **Step 2: Verify plugin.json JSON validity**
 
 ```bash
-python3 -c "import json; json.load(open('/data1/peijia/projects/metacog-lab/plugins/metacog/.claude-plugin/plugin.json')); print('valid')"
+python3 -c "import json; json.load(open('/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/.claude-plugin/plugin.json')); print('valid')"
 ```
 
 Expected: `valid`.
@@ -1371,8 +1371,8 @@ PY
 - [ ] **Step 2: Make executable and run**
 
 ```bash
-chmod +x /data1/peijia/projects/metacog-lab/plugins/metacog/tests/smoke_e2e.sh
-/data1/peijia/projects/metacog-lab/plugins/metacog/tests/smoke_e2e.sh
+chmod +x /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/tests/smoke_e2e.sh
+/data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog/tests/smoke_e2e.sh
 ```
 
 Expected output contains: `已记录本轮 FOK`, `已记录本轮 JOL`, `建议：停下`, `已关闭`, `已关闭` (final rejection).
@@ -1386,7 +1386,7 @@ cat > /tmp/fake_transcript.jsonl <<'EOF'
 {"role":"assistant","content":[{"type":"text","text":"turn 2"}]}
 EOF
 
-cd /data1/peijia/projects/metacog-lab/plugins/metacog
+cd /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog
 python3 -c "
 from reminder.parser import parse_transcript
 with open('/tmp/fake_transcript.jsonl') as f:
@@ -1400,7 +1400,7 @@ Expected: `ParseResult(turns_since_mcp=2, turns_since_reminder=3, open_session_i
 - [ ] **Step 4: Run full pytest suite**
 
 ```bash
-cd /data1/peijia/projects/metacog-lab/plugins/metacog
+cd /data1/peijia/projects/claude-code-main/metacog-lab/plugins/metacog
 pytest -v
 ```
 
@@ -1437,7 +1437,7 @@ Option A — via marketplace (recommended once the repo is published):
 
 Option B — local development:
 
-    cd /data1/peijia/projects/metacog-lab
+    cd /data1/peijia/projects/claude-code-main/metacog-lab
     /plugin marketplace add $(pwd)
     /plugin install metacog@metacog-lab
 

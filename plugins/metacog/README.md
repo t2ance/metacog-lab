@@ -19,7 +19,7 @@ Option A — via marketplace (recommended once the repo is published):
 
 Option B — local development:
 
-    /plugin marketplace add /data1/peijia/projects/metacog-lab
+    /plugin marketplace add /data1/peijia/projects/claude-code-main/metacog-lab
     /plugin install metacog@metacog-lab
 
 ## Requirements
