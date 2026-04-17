@@ -60,3 +60,33 @@ def record_FOK(session_id: str, FOK: float, note: str = "") -> str:
         "下一步：开始解题。完成后调用 record_JOL(session_id, JOL, note) "
         "上报对这版答案的事后把握。"
     )
+
+
+def record_JOL(session_id: str, JOL: float, note: str = "") -> str:
+    """Attempt done. Report JOL (post-attempt confidence) in [0, 1]."""
+    assert 0.0 <= JOL <= 1.0, f"JOL 越界: {JOL}"
+    s = STATE_STORE.get(session_id)
+    assert s is not None, f"session {session_id} 不存在"
+    if s["status"] == "closed":
+        return _closed_msg(session_id, s)
+    if s["state"] != STATE_AWAITING_JOL:
+        return _reject("record_JOL", s["state"])
+    p = s["pending"]
+    s["attempts"].append(
+        {
+            "attempt_id": len(s["attempts"]) + 1,
+            "FOK": p["FOK"],
+            "JOL": JOL,
+            "note_fok": p["note_fok"],
+            "note_jol": note,
+            "fok_ts": p["fok_ts"],
+            "jol_ts": time.time(),
+        }
+    )
+    s["pending"] = None
+    s["state"] = STATE_AWAITING_EVAL
+    s["last_activity"] = time.time()
+    return (
+        "已记录本轮 JOL。\n"
+        "下一步：调用 evaluate(session_id) 查看本轮应当停下、继续还是放弃。"
+    )

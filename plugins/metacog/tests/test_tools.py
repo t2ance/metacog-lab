@@ -39,3 +39,43 @@ def test_record_FOK_on_closed_session_returns_closed_msg(store):
     store.close("sess_1", "done")
     result = tools.record_FOK("sess_1", 0.5, "")
     assert "已关闭" in result
+
+
+def test_record_JOL_records_attempt(store):
+    tools.record_FOK("sess_1", 0.7, "fok note")
+    result = tools.record_JOL("sess_1", 0.5, "jol note")
+    assert "已记录本轮 JOL" in result
+    s = store.get("sess_1")
+    assert len(s["attempts"]) == 1
+    a = s["attempts"][0]
+    assert a["attempt_id"] == 1
+    assert a["FOK"] == 0.7
+    assert a["JOL"] == 0.5
+    assert a["note_fok"] == "fok note"
+    assert a["note_jol"] == "jol note"
+    assert s["pending"] is None
+    assert s["state"] == "awaiting_EVAL"
+
+
+def test_record_JOL_out_of_range_raises(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    with pytest.raises(AssertionError):
+        tools.record_JOL("sess_1", 1.5, "")
+
+
+def test_record_JOL_without_FOK_returns_reject(store):
+    store.create("sess_1")  # direct create, leaves in AWAITING_FOK
+    result = tools.record_JOL("sess_1", 0.5, "")
+    assert "顺序不符合" in result
+
+
+def test_record_JOL_on_missing_session_raises(store):
+    with pytest.raises(AssertionError):
+        tools.record_JOL("ghost", 0.5, "")
+
+
+def test_record_JOL_on_closed_session_returns_closed_msg(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    store.close("sess_1", "done")
+    result = tools.record_JOL("sess_1", 0.5, "")
+    assert "已关闭" in result
