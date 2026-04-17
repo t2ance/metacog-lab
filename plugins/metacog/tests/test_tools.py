@@ -123,3 +123,10 @@ def test_evaluate_always_returns_to_AWAITING_FOK(store):
     tools.record_JOL("sess_1", 0.4, "")
     tools.evaluate("sess_1")
     assert store.get("sess_1")["state"] == "awaiting_FOK"
+
+
+def test_evaluate_ambiguous_when_low_FOK_low_JOL_early_round(store):
+    tools.record_FOK("sess_1", 0.2, "")
+    tools.record_JOL("sess_1", 0.4, "")
+    result = tools.evaluate("sess_1")
+    assert "建议：模糊" in result
