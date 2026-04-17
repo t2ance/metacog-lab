@@ -68,7 +68,12 @@ def main() -> None:
     for sid in result.open_session_ids:
         msg_parts.append(f"  - session_id={sid}")
 
-    print(json.dumps({"additionalContext": "\n".join(msg_parts)}))
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": "\n".join(msg_parts),
+        }
+    }))
 
 
 if __name__ == "__main__":
