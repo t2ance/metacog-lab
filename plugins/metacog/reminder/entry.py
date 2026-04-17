@@ -42,7 +42,7 @@ def main() -> None:
         _emit_silent()
         return
 
-    lines = p.read_text().splitlines()
+    lines = p.read_text(encoding="utf-8").splitlines()
     result = parse_transcript(lines)
 
     if not result.open_session_ids:
