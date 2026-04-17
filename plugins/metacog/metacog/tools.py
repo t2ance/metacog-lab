@@ -37,7 +37,7 @@ def _reject(current_call: str, state: str) -> str:
 
 def _closed_msg(sid: str, s: dict) -> str:
     return (
-        f"会话 {sid} 已关闭（原因：{s.get('close_reason', '未说明')}）。"
+        f"会话 {sid} 已关闭（原因：{s['close_reason']}）。"
         "请使用新的 session_id 开启新会话。"
     )
 
