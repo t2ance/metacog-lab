@@ -142,3 +142,17 @@ def evaluate(session_id: str) -> str:
         "可以选择交付当前版并说明局限，或换一条完全不同的思路。"
         "交付后用 close_session 结束。"
     )
+
+
+def close_session(session_id: str, reason: str = "") -> str:
+    """Terminate session. All subsequent tool calls on this session_id will be rejected."""
+    s = STATE_STORE.get(session_id)
+    assert s is not None, f"session {session_id} 不存在"
+    if s["status"] == "closed":
+        return f"会话 {session_id} 已经是关闭状态（原因：{s['close_reason']}）。"
+    effective_reason = reason if reason else "未说明"
+    STATE_STORE.close(session_id, effective_reason)
+    return (
+        f"会话 {session_id} 已关闭（原因：{effective_reason}）。"
+        "提醒将停止。"
+    )

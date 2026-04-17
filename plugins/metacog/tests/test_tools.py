@@ -130,3 +130,31 @@ def test_evaluate_ambiguous_when_low_FOK_low_JOL_early_round(store):
     tools.record_JOL("sess_1", 0.4, "")
     result = tools.evaluate("sess_1")
     assert "建议：模糊" in result
+
+
+def test_close_session_latches_status(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    result = tools.close_session("sess_1", "user done")
+    assert "已关闭" in result
+    assert store.get("sess_1")["status"] == "closed"
+    assert store.get("sess_1")["close_reason"] == "user done"
+
+
+def test_close_session_already_closed_returns_note(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    tools.close_session("sess_1", "once")
+    result = tools.close_session("sess_1", "twice")
+    assert "已经是关闭状态" in result
+
+
+def test_close_session_missing_raises(store):
+    with pytest.raises(AssertionError):
+        tools.close_session("ghost", "x")
+
+
+def test_all_tools_reject_closed_session(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    tools.close_session("sess_1", "done")
+    assert "已关闭" in tools.record_FOK("sess_1", 0.5, "")
+    assert "已关闭" in tools.record_JOL("sess_1", 0.5, "")
+    assert "已关闭" in tools.evaluate("sess_1")
