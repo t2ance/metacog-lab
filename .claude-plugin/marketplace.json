@@ -1,0 +1,11 @@
+{
+  "name": "metacog-lab",
+  "owner": {"name": "peijia"},
+  "plugins": [
+    {
+      "name": "metacog",
+      "source": "./plugins/metacog",
+      "description": "Metacognitive FOK/JOL loop MCP with periodic open-session reminders."
+    }
+  ]
+}

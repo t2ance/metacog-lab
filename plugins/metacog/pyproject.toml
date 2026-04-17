@@ -1,0 +1,15 @@
+[project]
+name = "metacog"
+version = "0.1.0"
+description = "FOK/JOL metacognitive loop MCP"
+requires-python = ">=3.10"
+dependencies = [
+  "mcp>=1.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
