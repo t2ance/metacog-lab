@@ -90,3 +90,55 @@ def record_JOL(session_id: str, JOL: float, note: str = "") -> str:
         "已记录本轮 JOL。\n"
         "下一步：调用 evaluate(session_id) 查看本轮应当停下、继续还是放弃。"
     )
+
+
+_T_STOP_JOL = 0.80
+_T_RETRY_HOPE = 0.25
+_T_ABORT_MIN_ATTEMPTS = 3
+_T_ABORT_AVG_JOL = 0.55
+
+
+def evaluate(session_id: str) -> str:
+    """Compute advice for the just-finished attempt. Always cycles state back to AWAITING_FOK."""
+    s = STATE_STORE.get(session_id)
+    assert s is not None, f"session {session_id} 不存在"
+    if s["status"] == "closed":
+        return _closed_msg(session_id, s)
+    if s["state"] != STATE_AWAITING_EVAL:
+        return _reject("evaluate", s["state"])
+
+    attempts = s["attempts"]
+    last = attempts[-1]
+    FOK, JOL, n = last["FOK"], last["JOL"], len(attempts)
+    avg_JOL = sum(a["JOL"] for a in attempts) / n
+    s["state"] = STATE_AWAITING_FOK
+    s["last_activity"] = time.time()
+
+    if n >= _T_ABORT_MIN_ATTEMPTS and avg_JOL < _T_ABORT_AVG_JOL and JOL < _T_ABORT_AVG_JOL:
+        return (
+            f"建议：放弃。你已尝试 {n} 次，把握始终没有显著提升"
+            f"（平均 JOL≈{avg_JOL:.2f}）。考虑告诉用户你暂时无法完成，"
+            "并调 close_session(session_id, '放弃：多轮低 JOL') 结束会话。"
+        )
+    if JOL >= _T_STOP_JOL:
+        return (
+            f"建议：停下。这次答案的把握已经足够（JOL={JOL:.2f}），"
+            f"可以交给用户。本次共 {n} 次尝试。"
+            "交付后调 close_session(session_id, '完成') 结束会话。"
+        )
+    if n >= s["max_attempts"]:
+        return (
+            f"建议：停下（预算耗尽，已用完 {s['max_attempts']} 次）。"
+            "把当前最好一版交给用户并说明局限，然后 close_session 结束。"
+        )
+    if (1 - JOL) * FOK >= _T_RETRY_HOPE:
+        return (
+            f"建议：重试。当前把握不够但仍有希望（JOL={JOL:.2f}）。"
+            f"已尝试 {n} 次，还可再试 {s['max_attempts'] - n} 次。\n"
+            "下一步：调 record_FOK(session_id, FOK, note) 开始新一轮。"
+        )
+    return (
+        f"建议：模糊。当前把握不高，再试也未必显著改进（JOL={JOL:.2f}）。"
+        "可以选择交付当前版并说明局限，或换一条完全不同的思路。"
+        "交付后用 close_session 结束。"
+    )

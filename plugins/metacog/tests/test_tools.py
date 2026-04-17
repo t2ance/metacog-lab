@@ -79,3 +79,47 @@ def test_record_JOL_on_closed_session_returns_closed_msg(store):
     store.close("sess_1", "done")
     result = tools.record_JOL("sess_1", 0.5, "")
     assert "已关闭" in result
+
+
+def test_evaluate_stop_when_high_JOL(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    tools.record_JOL("sess_1", 0.9, "")
+    result = tools.evaluate("sess_1")
+    assert "建议：停下" in result
+    assert store.get("sess_1")["state"] == "awaiting_FOK"
+
+
+def test_evaluate_retry_when_FOK_high_JOL_low(store):
+    tools.record_FOK("sess_1", 0.8, "")
+    tools.record_JOL("sess_1", 0.3, "")
+    result = tools.evaluate("sess_1")
+    assert "建议：重试" in result
+
+
+def test_evaluate_abort_after_3_low_JOL_rounds(store):
+    for _ in range(3):
+        tools.record_FOK("sess_1", 0.4, "")
+        tools.record_JOL("sess_1", 0.3, "")
+        r = tools.evaluate("sess_1")
+    assert "建议：放弃" in r
+
+
+def test_evaluate_budget_exhausted_suggests_stop(store):
+    for _ in range(4):
+        tools.record_FOK("sess_1", 0.7, "")
+        tools.record_JOL("sess_1", 0.6, "")
+        r = tools.evaluate("sess_1")
+    assert "建议：停下" in r
+
+
+def test_evaluate_without_attempt_rejected(store):
+    store.create("sess_1")
+    result = tools.evaluate("sess_1")
+    assert "顺序不符合" in result
+
+
+def test_evaluate_always_returns_to_AWAITING_FOK(store):
+    tools.record_FOK("sess_1", 0.5, "")
+    tools.record_JOL("sess_1", 0.4, "")
+    tools.evaluate("sess_1")
+    assert store.get("sess_1")["state"] == "awaiting_FOK"
