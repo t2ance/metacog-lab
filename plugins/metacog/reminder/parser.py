@@ -1,10 +1,20 @@
 """Pure transcript parser for metacog reminder hook.
 
 Reads Claude Code session JSONL transcript lines (reverse chronological
-scan), reports:
+scan), reports counters used by the reminder hook:
   - turns_since_mcp: assistant turns since the most recent metacog.* tool_use
   - turns_since_reminder: assistant turns since the most recent reminder marker
-  - open_session_ids: session_ids with a recent metacog.* call and no later close_session
+  - open_session_ids: session_ids with a recent metacog.* call and no later close_session,
+    within the window walked before both anchors (mcp + reminder) were found.
+    Early-break at line-bottom means sessions opened BEFORE the most recent anchor
+    may not be listed. This is intentional: reminders fire on recent activity, not
+    on stale history.
+  - malformed_line_count: count of JSONL lines that failed to parse. A non-zero
+    value is a visible signal that some transcript content was silently skipped.
+
+Transcript envelope (CC format, verified):
+    {"type": "assistant"|"user"|..., "message": {"role": ..., "content": [...]}, ...}
+Top-level "type" is the role; "message.content" holds the blocks.
 """
 import json
 from dataclasses import dataclass, field
@@ -18,6 +28,7 @@ class ParseResult:
     turns_since_mcp: int = 0
     turns_since_reminder: int = 0
     open_session_ids: list[str] = field(default_factory=list)
+    malformed_line_count: int = 0
 
 
 def _extract_text(content_blocks) -> str:
@@ -27,8 +38,6 @@ def _extract_text(content_blocks) -> str:
     for block in content_blocks:
         if isinstance(block, dict) and block.get("type") == "text":
             out.append(block.get("text", ""))
-        elif isinstance(block, str):
-            out.append(block)
     return "".join(out)
 
 
@@ -40,6 +49,7 @@ def parse_transcript(lines: list[str]) -> ParseResult:
     closed_ids: set[str] = set()
     # preserve insertion order; we see "most recent" first by reverse walk
     open_sessions: dict[str, None] = {}
+    malformed = 0
 
     for raw in reversed(lines):
         if not raw or not raw.strip():
@@ -47,10 +57,12 @@ def parse_transcript(lines: list[str]) -> ParseResult:
         try:
             msg = json.loads(raw)
         except json.JSONDecodeError:
+            malformed += 1
             continue
 
-        role = msg.get("role") or msg.get("type")
-        content = msg.get("content", [])
+        role = msg.get("type")
+        inner = msg.get("message", {})
+        content = inner.get("content", []) if isinstance(inner, dict) else []
         if not isinstance(content, list):
             content = [content]
 
@@ -88,9 +100,11 @@ def parse_transcript(lines: list[str]) -> ParseResult:
         if seen_mcp and seen_reminder:
             break
 
-    open_ids = [sid for sid in open_sessions if sid not in closed_ids]
+    # Closed-ids guard at insertion time already prevents closed sessions from entering open_sessions
+    # under the reverse-walk order, so no filter needed here.
     return ParseResult(
         turns_since_mcp=turns_since_mcp,
         turns_since_reminder=turns_since_reminder,
-        open_session_ids=open_ids,
+        open_session_ids=list(open_sessions),
+        malformed_line_count=malformed,
     )
