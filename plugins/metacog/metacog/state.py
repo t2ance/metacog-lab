@@ -15,7 +15,7 @@ class SessionStore:
         self._sessions: dict[str, dict] = {}
 
     def _assert_id(self, sid: str) -> None:
-        assert isinstance(sid, str) and SESSION_ID_RE.match(sid), (
+        assert isinstance(sid, str) and SESSION_ID_RE.fullmatch(sid), (
             f"invalid session_id: {sid!r}"
         )
 
@@ -41,12 +41,13 @@ class SessionStore:
         return s
 
     def close(self, sid: str, reason: str) -> dict:
+        assert reason, "close reason required (non-empty string)"
         s = self.get(sid)
         assert s is not None, f"session {sid} does not exist"
         assert s["status"] == "running", f"session {sid} already {s['status']}"
         s["status"] = "closed"
         s["closed_at"] = time.time()
-        s["close_reason"] = reason if reason else "未说明"
+        s["close_reason"] = reason
         return s
 
 

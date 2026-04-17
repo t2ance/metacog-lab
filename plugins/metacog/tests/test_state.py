@@ -1,10 +1,5 @@
 import pytest
-from metacog.state import (
-    SessionStore,
-    STATE_AWAITING_FOK,
-    STATE_AWAITING_JOL,
-    STATE_AWAITING_EVAL,
-)
+from metacog.state import SessionStore, STATE_AWAITING_FOK
 
 
 def test_create_new_session_starts_in_awaiting_FOK():
@@ -67,8 +62,8 @@ def test_close_already_closed_raises():
         store.close("sess_1", "twice")
 
 
-def test_close_with_empty_reason_defaults():
+def test_close_empty_reason_raises():
     store = SessionStore()
     store.create("sess_1")
-    s = store.close("sess_1", "")
-    assert s["close_reason"] == "未说明"
+    with pytest.raises(AssertionError):
+        store.close("sess_1", "")
