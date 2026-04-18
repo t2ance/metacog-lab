@@ -24,6 +24,10 @@ _CALL_DESC = {
     "close_session": "close_session (end the session)",
 }
 
+_NO_SESSION_HINT = (
+    "session {sid} does not exist; call start_session(session_id, max_attempts) first"
+)
+
 
 def _reject(current_call: str, state: str) -> str:
     return (
@@ -31,7 +35,7 @@ def _reject(current_call: str, state: str) -> str:
         f"  Your last step: {_HUMAN_STATE[state]}\n"
         f"  Next step should be: {_EXPECTED_NEXT[state]}\n"
         f"  But you called: {_CALL_DESC[current_call]}\n"
-        "Call order must be: FOK -> solve -> JOL -> evaluate."
+        "Call order must be: start_session -> FOK -> solve -> JOL -> evaluate."
     )
 
 
@@ -42,12 +46,31 @@ def _closed_msg(sid: str, s: dict) -> str:
     )
 
 
+def start_session(session_id: str, max_attempts: int = 4, note: str = "") -> str:
+    """Initialize a session with an attempt budget. Required before record_FOK."""
+    assert max_attempts >= 1, f"max_attempts must be >= 1, got {max_attempts}"
+    s = STATE_STORE.get(session_id)
+    if s is not None:
+        if s["status"] == "closed":
+            return _closed_msg(session_id, s)
+        return (
+            f"Session {session_id} already exists "
+            f"(max_attempts={s['max_attempts']}, state={s['state']}). "
+            "No change made; call record_FOK to start a round."
+        )
+    STATE_STORE.create(session_id, max_attempts=max_attempts, note=note)
+    note_part = f", note: {note}" if note else ""
+    return (
+        f"Session {session_id} started (max_attempts={max_attempts}{note_part}).\n"
+        "Next step: call record_FOK(session_id, FOK, note) to report pre-attempt confidence."
+    )
+
+
 def record_FOK(session_id: str, FOK: float, note: str = "") -> str:
-    """New round begins. Report FOK (pre-attempt confidence) in [0, 1]."""
+    """Pre-attempt confidence for a round. Session must be started via start_session first."""
     assert 0.0 <= FOK <= 1.0, f"FOK out of range: {FOK}"
     s = STATE_STORE.get(session_id)
-    if s is None:
-        s = STATE_STORE.create(session_id)
+    assert s is not None, _NO_SESSION_HINT.format(sid=session_id)
     if s["status"] == "closed":
         return _closed_msg(session_id, s)
     if s["state"] != STATE_AWAITING_FOK:
@@ -66,7 +89,7 @@ def record_JOL(session_id: str, JOL: float, note: str = "") -> str:
     """Attempt done. Report JOL (post-attempt confidence) in [0, 1]."""
     assert 0.0 <= JOL <= 1.0, f"JOL out of range: {JOL}"
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} does not exist"
+    assert s is not None, _NO_SESSION_HINT.format(sid=session_id)
     if s["status"] == "closed":
         return _closed_msg(session_id, s)
     if s["state"] != STATE_AWAITING_JOL:
@@ -101,7 +124,7 @@ _T_ABORT_AVG_JOL = 0.55
 def evaluate(session_id: str) -> str:
     """Compute advice for the just-finished attempt. Always cycles state back to AWAITING_FOK."""
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} does not exist"
+    assert s is not None, _NO_SESSION_HINT.format(sid=session_id)
     if s["status"] == "closed":
         return _closed_msg(session_id, s)
     if s["state"] != STATE_AWAITING_EVAL:
@@ -147,7 +170,7 @@ def evaluate(session_id: str) -> str:
 def close_session(session_id: str, reason: str = "") -> str:
     """Terminate session. All subsequent tool calls on this session_id will be rejected."""
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} does not exist"
+    assert s is not None, _NO_SESSION_HINT.format(sid=session_id)
     if s["status"] == "closed":
         return f"Session {session_id} is already closed (reason: {s['close_reason']})."
     effective_reason = reason if reason else "unspecified"

@@ -15,8 +15,14 @@ app = FastMCP("metacog")
 
 
 @app.tool()
+def start_session(session_id: str, max_attempts: int = 4, note: str = "") -> str:
+    """Initialize a session with an attempt budget. Required before record_FOK."""
+    return tools.start_session(session_id, max_attempts, note)
+
+
+@app.tool()
 def record_FOK(session_id: str, FOK: float, note: str = "") -> str:
-    """Before solving this round: report FOK (pre-attempt confidence, [0,1])."""
+    """Pre-attempt confidence for a round. Session must be started via start_session first."""
     return tools.record_FOK(session_id, FOK, note)
 
 

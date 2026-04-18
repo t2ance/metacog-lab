@@ -23,7 +23,7 @@ class SessionStore:
         self._assert_id(sid)
         return self._sessions.get(sid)
 
-    def create(self, sid: str, max_attempts: int = DEFAULT_MAX_ATTEMPTS) -> dict:
+    def create(self, sid: str, max_attempts: int = DEFAULT_MAX_ATTEMPTS, note: str = "") -> dict:
         self._assert_id(sid)
         assert sid not in self._sessions, f"session {sid} already exists"
         now = time.time()
@@ -34,6 +34,7 @@ class SessionStore:
             "attempts": [],
             "pending": None,
             "max_attempts": max_attempts,
+            "note": note,
             "created_at": now,
             "last_activity": now,
         }

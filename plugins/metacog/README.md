@@ -2,7 +2,7 @@
 
 Make Claude Code stop, calibrate, and decide before sinking turns into a hard problem.
 
-The plugin gives the agent a 4-step metacognitive loop (FOK → solve → JOL → evaluate) and
+The plugin gives the agent a metacognitive loop (start → FOK → solve → JOL → evaluate) and
 periodically reminds the agent if it forgets to use the loop on a long-running session.
 
 ## Install
@@ -40,18 +40,21 @@ When the upstream repo has new commits, pull them in:
 
 ## How to use
 
-After install, the agent gains 4 tools: `record_FOK`, `record_JOL`, `evaluate`, `close_session`.
-Intended call flow per problem:
+After install, the agent gains 5 tools: `start_session`, `record_FOK`, `record_JOL`,
+`evaluate`, `close_session`. Intended call flow per problem:
 
-1. Before attempting: agent calls `record_FOK(session_id, FOK)` with confidence in [0, 1]
+1. Once per problem: agent calls `start_session(session_id, max_attempts, note)` to
+   allocate the attempt budget for this session.
+2. Before attempting: agent calls `record_FOK(session_id, FOK)` with confidence in [0, 1]
    that it can solve the problem.
-2. Agent solves.
-3. After attempting: agent calls `record_JOL(session_id, JOL)` with confidence in [0, 1]
+3. Agent solves.
+4. After attempting: agent calls `record_JOL(session_id, JOL)` with confidence in [0, 1]
    that the answer is correct.
-4. Agent calls `evaluate(session_id)` and reads the advice — stop / retry / abort / ambiguous.
-5. When the problem is done (or abandoned), agent calls `close_session(session_id, reason)`.
+5. Agent calls `evaluate(session_id)` and reads the advice — stop / retry / abort / ambiguous.
+6. When the problem is done (or abandoned), agent calls `close_session(session_id, reason)`.
 
-`session_id` is a free string the agent picks; one per problem.
+`session_id` is a free string the agent picks; one per problem. `record_FOK` on a
+session that was never started raises an error.
 
 ### What you will see
 
@@ -69,6 +72,9 @@ either skipped or installed into the wrong Python.
 
 ## Tools
 
+- `start_session(session_id, max_attempts=4, note="")` — initialize a session with an
+  attempt budget. Required before `record_FOK`. Calling on an existing running session is
+  a no-op (original budget kept). Calling on a closed session is rejected.
 - `record_FOK(session_id, FOK, note="")` — pre-attempt confidence, FOK in [0, 1].
 - `record_JOL(session_id, JOL, note="")` — post-attempt confidence, JOL in [0, 1].
 - `evaluate(session_id)` — advice (stop / retry / abort / ambiguous); cycles state back to AWAITING_FOK.

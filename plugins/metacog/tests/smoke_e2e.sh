@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test: drive the MCP through a full FOK->JOL->evaluate->close cycle
+# Smoke test: drive the MCP through a full start->FOK->JOL->evaluate->close cycle
 # using the pure tools module directly (no MCP protocol overhead).
 set -euo pipefail
 
@@ -7,6 +7,10 @@ cd "$(dirname "$0")/.."
 
 python3 <<'PY'
 from metacog import tools
+
+print("0. start_session:")
+print(tools.start_session("smoke_1", max_attempts=4, note="smoke"))
+print()
 
 print("1. record_FOK:")
 print(tools.record_FOK("smoke_1", 0.7, "fok note"))
