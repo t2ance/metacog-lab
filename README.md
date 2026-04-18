@@ -14,5 +14,13 @@ In Claude Code:
     /plugin install metacog@metacog-lab
     /reload-plugins
 
+## Update
+
+To pull the latest version after the upstream repo changes:
+
+    /plugin marketplace update metacog-lab
+    /plugin install metacog@metacog-lab
+    /reload-plugins
+
 Plugin-specific install steps (including required `pip install mcp`) and usage instructions
 live in each plugin's README.

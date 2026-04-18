@@ -27,6 +27,17 @@ periodically reminds the agent if it forgets to use the loop on a long-running s
 
 Requirements: Python 3.10+.
 
+## Update
+
+When the upstream repo has new commits, pull them in:
+
+    /plugin marketplace update metacog-lab
+    /plugin install metacog@metacog-lab
+    /reload-plugins
+
+`marketplace update` refreshes the catalog; `install` re-runs and overwrites the old version;
+`reload-plugins` activates the new version in the running session.
+
 ## How to use
 
 After install, the agent gains 4 tools: `record_FOK`, `record_JOL`, `evaluate`, `close_session`.
