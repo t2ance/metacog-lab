@@ -1,6 +1,6 @@
 [project]
 name = "metacog"
-version = "0.1.2"
+version = "0.1.3"
 description = "FOK/JOL metacognitive loop MCP"
 requires-python = ">=3.10"
 dependencies = [
