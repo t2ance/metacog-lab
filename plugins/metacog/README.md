@@ -1,89 +1,82 @@
 # metacog plugin
 
-Metacognitive FOK/JOL loop MCP for Claude Code with periodic reminders for open sessions.
+Make Claude Code stop, calibrate, and decide before sinking turns into a hard problem.
 
-## State machine
-
-    AWAITING_FOK -> record_FOK -> AWAITING_JOL -> record_JOL -> AWAITING_EVAL -> evaluate -> AWAITING_FOK ...
-
-Agent may call `close_session(session_id, reason)` in any running state to terminate. CLOSED is a latch — all further tool calls on that session_id are rejected.
-
-`evaluate()` returns advice text ("建议：停下" / "建议：重试" / "建议：放弃" / "建议：模糊") but never changes the FSM state to terminal — state cycles back to AWAITING_FOK. Agent autonomy decides whether to start a new round.
+The plugin gives the agent a 4-step metacognitive loop (FOK → solve → JOL → evaluate) and
+periodically reminds the agent if it forgets to use the loop on a long-running session.
 
 ## Install
 
-Option A — via marketplace (recommended once the repo is published):
+1. Install the Python SDK the MCP server depends on. **Plugin install does NOT do this for you.**
 
-    /plugin marketplace add https://github.com/<you>/metacog-lab
-    /plugin install metacog@metacog-lab
+   ```bash
+   pip install mcp
+   ```
 
-Option B — local development:
+   Install into the Python that `python3` resolves to in the shell where Claude Code runs
+   (`which python3` to confirm). Without `mcp`, the MCP server crashes on launch and the
+   tools silently fail to appear.
 
-    /plugin marketplace add /data1/peijia/projects/claude-code-main/metacog-lab
-    /plugin install metacog@metacog-lab
+2. Register the marketplace and install the plugin in Claude Code:
 
-## Requirements
+   ```
+   /plugin marketplace add https://github.com/t2ance/metacog-lab
+   /plugin install metacog@metacog-lab
+   /reload-plugins
+   ```
 
-- Python 3.10+
-- `mcp` Python SDK (system-wide `pip install mcp`, or rely on a Python environment that already provides it)
+Requirements: Python 3.10+.
 
-## Reminder mechanism
+## How to use
 
-A `UserPromptSubmit` hook fires each user turn. The hook script parses the CC transcript (stdin payload contains `transcript_path`) and counts:
+After install, the agent gains 4 tools: `record_FOK`, `record_JOL`, `evaluate`, `close_session`.
+Intended call flow per problem:
 
-- turns since the most recent `metacog.*` tool_use
-- turns since the last reminder the hook itself injected
+1. Before attempting: agent calls `record_FOK(session_id, FOK)` with confidence in [0, 1]
+   that it can solve the problem.
+2. Agent solves.
+3. After attempting: agent calls `record_JOL(session_id, JOL)` with confidence in [0, 1]
+   that the answer is correct.
+4. Agent calls `evaluate(session_id)` and reads the advice — stop / retry / abort / ambiguous.
+5. When the problem is done (or abandoned), agent calls `close_session(session_id, reason)`.
 
-If BOTH counts are >= 10 AND at least one open (non-closed) session exists, the hook emits a `<system-reminder>` listing open session_ids. Thresholds mirror CC's TodoList reminder (attachments.ts:254-257).
+`session_id` is a free string the agent picks; one per problem.
+
+### What you will see
+
+- Tool calls in the agent's transcript named `mcp__plugin_metacog_metacog__record_FOK` etc.
+- The agent's reply incorporates the advice text returned by `evaluate`.
+- If the agent opens a session and then ignores metacog for ≥10 of your turns, a
+  `<system-reminder>` appears listing the open `session_id`(s), nudging the agent to call
+  `evaluate` or `close_session`.
+
+### Verify install
+
+Ask the agent to do a non-trivial task and explicitly instruct it to use the metacog loop.
+You should see the four tool calls in order. If nothing appears, `pip install mcp` was
+either skipped or installed into the wrong Python.
 
 ## Tools
 
-- `record_FOK(session_id, FOK, note)` — call before solving. FOK in [0, 1].
-- `record_JOL(session_id, JOL, note)` — call after solving. JOL in [0, 1].
-- `evaluate(session_id)` — returns human-language advice; state cycles back to AWAITING_FOK.
-- `close_session(session_id, reason)` — latch session as CLOSED.
+- `record_FOK(session_id, FOK, note="")` — pre-attempt confidence, FOK in [0, 1].
+- `record_JOL(session_id, JOL, note="")` — post-attempt confidence, JOL in [0, 1].
+- `evaluate(session_id)` — advice (stop / retry / abort / ambiguous); cycles state back to AWAITING_FOK.
+- `close_session(session_id, reason)` — latch session as CLOSED; further calls rejected.
 
 ## Tuning
 
-Edit `reminder/entry.py`:
+Reminder cadence — `reminder/entry.py`:
 
     TURNS_SINCE_MCP = 10
     TURNS_BETWEEN_REMINDERS = 10
 
-Edit `metacog/tools.py`:
+Evaluator thresholds — `metacog/tools.py`:
 
-    _T_STOP_JOL = 0.80          # JOL >= this => "建议：停下"
-    _T_RETRY_HOPE = 0.25        # (1-JOL)*FOK >= this => "建议：重试"
+    _T_STOP_JOL = 0.80          # JOL >= this => "Advice: stop"
+    _T_RETRY_HOPE = 0.25        # (1-JOL)*FOK >= this => "Advice: retry"
     _T_ABORT_MIN_ATTEMPTS = 3   # min attempts before abort eligible
-    _T_ABORT_AVG_JOL = 0.55     # avg JOL < this AND last JOL < this => "建议：放弃"
+    _T_ABORT_AVG_JOL = 0.55     # avg JOL < this AND last JOL < this => "Advice: abort"
 
-## Tests
+## Limitations
 
-Unit tests cover state machine, tool branches, parser behavior:
-
-    cd plugins/metacog
-    pytest -v
-
-Integration smoke (full FSM cycle + parser + hook entry):
-
-    bash tests/smoke_e2e.sh
-
-## Layout
-
-    plugins/metacog/
-      .claude-plugin/plugin.json     # CC plugin manifest
-      metacog/                       # MCP server package
-        state.py                     # SessionStore FSM (pure)
-        tools.py                     # 4 tool implementations (pure)
-        server.py                    # FastMCP wiring
-      reminder/                      # Hook package
-        parser.py                    # Transcript scanner (pure)
-        entry.py                     # UserPromptSubmit hook adapter
-      tests/                         # Unit + smoke tests
-      pyproject.toml
-      README.md                      # this file
-
-## Known limitations
-
-- Session state is in-memory only; it does not survive a CC restart. This is a deliberate scope cut — add file persistence later if cross-session replay becomes valuable.
-- `pip install -e .` for this plugin directory fails due to setuptools auto-discovery ambiguity across three top-level dirs (metacog/reminder/tests). Not needed for normal use since CC plugin loader invokes entry scripts directly via `${CLAUDE_PLUGIN_ROOT}` paths.
+Session state is in memory; it does not survive a Claude Code restart.

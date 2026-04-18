@@ -4,11 +4,15 @@ Claude Code marketplace for metacognition-style MCP plugins.
 
 ## Plugins
 
-- [metacog](plugins/metacog/) — FOK/JOL metacognitive loop with periodic reminders.
+- [metacog](plugins/metacog/) — FOK/JOL metacognitive loop with periodic open-session reminders.
 
 ## Install
 
-Add this repo to Claude Code as a marketplace:
+In Claude Code:
 
-    /plugin marketplace add <this-repo-url>
+    /plugin marketplace add https://github.com/t2ance/metacog-lab
     /plugin install metacog@metacog-lab
+    /reload-plugins
+
+Plugin-specific install steps (including required `pip install mcp`) and usage instructions
+live in each plugin's README.

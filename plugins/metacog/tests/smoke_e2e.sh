@@ -21,7 +21,7 @@ print(tools.evaluate("smoke_1"))
 print()
 
 print("4. close_session:")
-print(tools.close_session("smoke_1", "完成"))
+print(tools.close_session("smoke_1", "done"))
 print()
 
 print("5. attempt after close (should be rejected):")

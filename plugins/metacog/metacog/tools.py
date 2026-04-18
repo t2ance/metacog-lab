@@ -8,43 +8,43 @@ from metacog.state import (
 )
 
 _HUMAN_STATE = {
-    STATE_AWAITING_FOK: "（新一轮起点，尚无本轮记录）",
-    STATE_AWAITING_JOL: "record_FOK（本轮事前评估已记录）",
-    STATE_AWAITING_EVAL: "record_JOL（本轮事后评估已记录）",
+    STATE_AWAITING_FOK: "(start of new round; nothing recorded yet)",
+    STATE_AWAITING_JOL: "record_FOK (pre-attempt confidence recorded)",
+    STATE_AWAITING_EVAL: "record_JOL (post-attempt confidence recorded)",
 }
 _EXPECTED_NEXT = {
-    STATE_AWAITING_FOK: "record_FOK（本轮开始前的事前把握评估）",
-    STATE_AWAITING_JOL: "record_JOL（做完题后上报事后评估）",
-    STATE_AWAITING_EVAL: "evaluate（查看是否继续/停下/放弃）",
+    STATE_AWAITING_FOK: "record_FOK (pre-attempt confidence for the new round)",
+    STATE_AWAITING_JOL: "record_JOL (post-attempt confidence after solving)",
+    STATE_AWAITING_EVAL: "evaluate (decide continue/stop/abort)",
 }
 _CALL_DESC = {
-    "record_FOK": "record_FOK（事前把握评估）",
-    "record_JOL": "record_JOL（事后把握评估）",
-    "evaluate": "evaluate（查看下一步建议）",
-    "close_session": "close_session（结束会话）",
+    "record_FOK": "record_FOK (pre-attempt confidence)",
+    "record_JOL": "record_JOL (post-attempt confidence)",
+    "evaluate": "evaluate (read next-step advice)",
+    "close_session": "close_session (end the session)",
 }
 
 
 def _reject(current_call: str, state: str) -> str:
     return (
-        "调用顺序不符合元认知流程。\n"
-        f"  你上一步：{_HUMAN_STATE[state]}\n"
-        f"  下一步应该是：{_EXPECTED_NEXT[state]}\n"
-        f"  而你现在调用的是：{_CALL_DESC[current_call]}\n"
-        "请按 FOK → 解题 → JOL → evaluate 的顺序调用。"
+        "Call order violates the metacognitive flow.\n"
+        f"  Your last step: {_HUMAN_STATE[state]}\n"
+        f"  Next step should be: {_EXPECTED_NEXT[state]}\n"
+        f"  But you called: {_CALL_DESC[current_call]}\n"
+        "Call order must be: FOK -> solve -> JOL -> evaluate."
     )
 
 
 def _closed_msg(sid: str, s: dict) -> str:
     return (
-        f"会话 {sid} 已关闭（原因：{s['close_reason']}）。"
-        "请使用新的 session_id 开启新会话。"
+        f"Session {sid} is closed (reason: {s['close_reason']}). "
+        "Open a new session with a fresh session_id."
     )
 
 
 def record_FOK(session_id: str, FOK: float, note: str = "") -> str:
     """New round begins. Report FOK (pre-attempt confidence) in [0, 1]."""
-    assert 0.0 <= FOK <= 1.0, f"FOK 越界: {FOK}"
+    assert 0.0 <= FOK <= 1.0, f"FOK out of range: {FOK}"
     s = STATE_STORE.get(session_id)
     if s is None:
         s = STATE_STORE.create(session_id)
@@ -56,17 +56,17 @@ def record_FOK(session_id: str, FOK: float, note: str = "") -> str:
     s["state"] = STATE_AWAITING_JOL
     s["last_activity"] = time.time()
     return (
-        "已记录本轮 FOK。\n"
-        "下一步：开始解题。完成后调用 record_JOL(session_id, JOL, note) "
-        "上报对这版答案的事后把握。"
+        "Recorded FOK for this round.\n"
+        "Next step: solve the problem. When done, call "
+        "record_JOL(session_id, JOL, note) to report post-attempt confidence."
     )
 
 
 def record_JOL(session_id: str, JOL: float, note: str = "") -> str:
     """Attempt done. Report JOL (post-attempt confidence) in [0, 1]."""
-    assert 0.0 <= JOL <= 1.0, f"JOL 越界: {JOL}"
+    assert 0.0 <= JOL <= 1.0, f"JOL out of range: {JOL}"
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} 不存在"
+    assert s is not None, f"session {session_id} does not exist"
     if s["status"] == "closed":
         return _closed_msg(session_id, s)
     if s["state"] != STATE_AWAITING_JOL:
@@ -87,8 +87,8 @@ def record_JOL(session_id: str, JOL: float, note: str = "") -> str:
     s["state"] = STATE_AWAITING_EVAL
     s["last_activity"] = time.time()
     return (
-        "已记录本轮 JOL。\n"
-        "下一步：调用 evaluate(session_id) 查看本轮应当停下、继续还是放弃。"
+        "Recorded JOL for this round.\n"
+        "Next step: call evaluate(session_id) to see whether to stop, retry, or abort."
     )
 
 
@@ -101,7 +101,7 @@ _T_ABORT_AVG_JOL = 0.55
 def evaluate(session_id: str) -> str:
     """Compute advice for the just-finished attempt. Always cycles state back to AWAITING_FOK."""
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} 不存在"
+    assert s is not None, f"session {session_id} does not exist"
     if s["status"] == "closed":
         return _closed_msg(session_id, s)
     if s["state"] != STATE_AWAITING_EVAL:
@@ -116,43 +116,42 @@ def evaluate(session_id: str) -> str:
 
     if n >= _T_ABORT_MIN_ATTEMPTS and avg_JOL < _T_ABORT_AVG_JOL and JOL < _T_ABORT_AVG_JOL:
         return (
-            f"建议：放弃。你已尝试 {n} 次，把握始终没有显著提升"
-            f"（平均 JOL≈{avg_JOL:.2f}）。考虑告诉用户你暂时无法完成，"
-            "并调 close_session(session_id, '放弃：多轮低 JOL') 结束会话。"
+            f"Advice: abort. After {n} attempts, confidence has not improved meaningfully "
+            f"(avg JOL~={avg_JOL:.2f}). Tell the user you cannot complete this for now, "
+            "then call close_session(session_id, 'abort: low JOL across rounds') to end the session."
         )
     if JOL >= _T_STOP_JOL:
         return (
-            f"建议：停下。这次答案的把握已经足够（JOL={JOL:.2f}），"
-            f"可以交给用户。本次共 {n} 次尝试。"
-            "交付后调 close_session(session_id, '完成') 结束会话。"
+            f"Advice: stop. Confidence is high enough (JOL={JOL:.2f}); deliver the answer "
+            f"to the user. {n} attempts total. After delivery, call "
+            "close_session(session_id, 'done') to end the session."
         )
     if n >= s["max_attempts"]:
         return (
-            f"建议：停下（预算耗尽，已用完 {s['max_attempts']} 次）。"
-            "把当前最好一版交给用户并说明局限，然后 close_session 结束。"
+            f"Advice: stop (budget exhausted, used {s['max_attempts']} attempts). "
+            "Deliver the best version so far with a note on its limitations, then call close_session."
         )
     if (1 - JOL) * FOK >= _T_RETRY_HOPE:
         return (
-            f"建议：重试。当前把握不够但仍有希望（JOL={JOL:.2f}）。"
-            f"已尝试 {n} 次，还可再试 {s['max_attempts'] - n} 次。\n"
-            "下一步：调 record_FOK(session_id, FOK, note) 开始新一轮。"
+            f"Advice: retry. Confidence is low but improvement is plausible (JOL={JOL:.2f}). "
+            f"{n} attempts so far, {s['max_attempts'] - n} attempts remaining.\n"
+            "Next step: call record_FOK(session_id, FOK, note) to start a new round."
         )
     return (
-        f"建议：模糊。当前把握不高，再试也未必显著改进（JOL={JOL:.2f}）。"
-        "可以选择交付当前版并说明局限，或换一条完全不同的思路。"
-        "交付后用 close_session 结束。"
+        f"Advice: ambiguous. Confidence is low and another attempt may not help (JOL={JOL:.2f}). "
+        "Either deliver the current version with a note on limitations, or try a completely "
+        "different approach. After delivery, call close_session."
     )
 
 
 def close_session(session_id: str, reason: str = "") -> str:
     """Terminate session. All subsequent tool calls on this session_id will be rejected."""
     s = STATE_STORE.get(session_id)
-    assert s is not None, f"session {session_id} 不存在"
+    assert s is not None, f"session {session_id} does not exist"
     if s["status"] == "closed":
-        return f"会话 {session_id} 已经是关闭状态（原因：{s['close_reason']}）。"
-    effective_reason = reason if reason else "未说明"
+        return f"Session {session_id} is already closed (reason: {s['close_reason']})."
+    effective_reason = reason if reason else "unspecified"
     STATE_STORE.close(session_id, effective_reason)
     return (
-        f"会话 {session_id} 已关闭（原因：{effective_reason}）。"
-        "提醒将停止。"
+        f"Session {session_id} closed (reason: {effective_reason}). Reminders will stop."
     )
